@@ -9,11 +9,12 @@ import pathlib
 import os
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Hyperparameters
-epochs = 5
-batch_size = 128
-learning_rate = 1e-3
+epochs = 100
+batch_size = 100
+learning_rate = 0.005
 
 # MNIST dataset
 train_dataset = datasets.MNIST(root="./data", train=True, transform=transforms.ToTensor(),
@@ -49,7 +50,9 @@ class D(nn.Module):
             nn.MaxPool2d(2)
         )
 
-        self.fc_out = nn.Linear(7 * 7 * 32, self.output_size)
+        self.fc_out = nn.Sequential(
+            nn.Linear(7 * 7 * 32, self.output_size)
+        )
 
     def forward(self, x):
         out = self.conv1(x)
@@ -67,24 +70,45 @@ class G(nn.Module):
 
         self.fc_in = nn.Linear(self.input_size, 7 * 7 )
         
-        self.conv1 = nn.Sequential(
+
+        self.encoder = nn.Sequential(
             nn.ConvTranspose2d(1, 2, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(),
             nn.ConvTranspose2d(2, 1, kernel_size=5, stride=2, padding=0),
+            nn.LeakyReLU()
+        )
+
+        self.conv1 = nn.Sequential(
+            nn.ConvTranspose2d(1, 2, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.Conv2d(2, 1, kernel_size=5, stride=2, padding=1),
             nn.Tanh()
         )
 
     def forward(self, x, noise):
         out = self.fc_in(x)
         out = out.view(out.size(0), 1, 7, 7)
+        out = self.encoder(out)
+        out = out + noise
         out = self.conv1(out)
         return out
 
 
+class StableBCELoss(nn.modules.Module):
+       def __init__(self):
+             super(StableBCELoss, self).__init__()
+
+       def forward(self, _input, target):
+            _input = _input.data
+            neg_abs = - _input.abs()
+            loss = _input.clamp(min=0) - _input * target + \
+                (1 + neg_abs.exp()).log()
+            return loss.mean()
+
 _d = D(1, 10)
 _d.cuda()
 
-_g = G(1)
+_g = G(10)
 _g.cuda()
 
 # Loss and Optimizer
@@ -94,6 +118,7 @@ optimizer_d = torch.optim.Adam(_d.parameters(), lr=learning_rate)
 criterion_g = nn.CrossEntropyLoss()
 optimizer_g = torch.optim.Adam(_g.parameters(), lr=learning_rate)
 
+m = torch.distributions.Normal(torch.Tensor([0.0]), torch.Tensor([1.0]))
 
 # Train the model
 for epoch in range(epochs):
@@ -106,16 +131,27 @@ for epoch in range(epochs):
         outputs_d = _d(images)
 
         loss_d = criterion_d(outputs_d, labels)
-        loss_d.backward()
-        optimizer_d.step()
+
+        if loss_d.data[0] > 0.05:
+            loss_d.backward()
+            optimizer_d.step()
 
         if (i + 1) % 100 == 0:
             print("Epoch [%d/%d], Iter [%d/%d] D Loss: %.8f" % (epoch + 1, epochs,
                                                               i + 1, len(train_dataset) // batch_size, loss_d.data[0]))
 
         # G Forward + Backward + Optimize
-        labels_g = labels.view(-1, 1).cuda()
-        images_g = _g(labels_g.float(), [])
+        labels_onehot = labels.data.cpu().numpy()
+        labels_onehot = (np.arange(10) == labels_onehot[:,None]).astype(np.float)
+        labels_onehot = torch.from_numpy(labels_onehot)
+
+        #print(labels_onehot)
+
+        labels_g = labels_onehot.cuda()
+        labels_g = Variable(labels_g)
+
+        noise = Variable(m.sample_n(batch_size * 29 * 29).view(batch_size, 1, 29, 29).cuda())
+        images_g = _g(labels_g.float(), noise)
 
         optimizer_g.zero_grad()
         truth = _d(images_g)
@@ -149,8 +185,14 @@ _g.eval()
 correct_g = 0
 total_g = 0
 
-labels = Variable(torch.arange(0, 10).view(-1, 1)).cuda()
-im_outputs = _g(labels, [])
+labels = Variable(torch.arange(0, 10).view(-1)).data.numpy()
+labels = (np.arange(10) == labels[:,None]).astype(np.float)
+labels = torch.from_numpy(labels)
+labels = Variable(labels.cuda())
+
+noise = Variable(m.sample_n(10 * 29 * 29).view(10, 1, 29, 29).cuda())
+
+im_outputs = _g(labels.float(), noise)
 
 figure_path = './sample'
 pathlib.Path(figure_path).mkdir(parents=True, exist_ok=True)
