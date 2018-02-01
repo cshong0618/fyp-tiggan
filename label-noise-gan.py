@@ -74,7 +74,7 @@ class G(nn.Module):
 
         self.fc_in = nn.Sequential(
             nn.Linear(self.input_size, 16),
-            nn.LeakyReLU(),
+            #nn.LeakyReLU(),
             nn.Linear(16, 7 * 7)
         )
 
@@ -98,7 +98,10 @@ class G(nn.Module):
         out = self.fc_in(x)
         out = out.view(out.size(0), 1, 7, 7)
         out = self.encoder(out)
-        out = (out + noise) / 2
+        #out = (out + noise) / 2
+        #out = torch.max(out, noise)
+        #out = out * noise
+        out = out + noise
         out = self.conv1(out)
         return out
 
@@ -127,7 +130,7 @@ optimizer_d = torch.optim.Adam(_d.parameters(), lr=learning_rate_d)
 criterion_g = nn.CrossEntropyLoss()
 optimizer_g = torch.optim.Adam(_g.parameters(), lr=learning_rate_g)
 
-m = torch.distributions.Normal(torch.Tensor([0.0]), torch.Tensor([1.0]))
+m = torch.distributions.Normal(torch.Tensor([-1.0]), torch.Tensor([1.0]))
 
 # Train the model
 for epoch in range(epochs):
