@@ -15,7 +15,7 @@ import numpy as np
 from helper import generate_images
 
 # Hyperparameters
-epochs = 25
+epochs = 100
 batch_size = 100
 learning_rate_d = 1e-3
 learning_rate_g = 1e-3
@@ -94,15 +94,53 @@ class G(nn.Module):
             nn.Tanh()
         )
 
+        self.noise_autoencoder = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=1),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=5, stride=2, padding=1),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(1, 1, kernel_size=5, padding=1)
+        )
+
+        self.transformer = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 8, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(8, 1, kernel_size=1, stride=1, padding=1),
+            nn.Tanh()
+        )
+
     def forward(self, x, noise):
         out = self.fc_in(x)
         out = out.view(out.size(0), 1, 7, 7)
         out = self.encoder(out)
+        #noise = self.noise_autoencoder(noise)
+        #print(noise.size(), out.size())
         #out = (out + noise) / 2
-        #out = torch.max(out, noise)
+        out = torch.max(out, noise)
         #out = out * noise
-        out = out + noise
-        out = self.conv1(out)
+        #out = out + noise
+        #out = self.conv1(out)
+        out = self.transformer(out)
         return out
 
 
@@ -142,27 +180,28 @@ for epoch in range(epochs):
         labels_onehot = torch.from_numpy(labels_onehot)
         labels_g = labels_onehot.cuda()
         labels_g = Variable(labels_g)
-
+        #noise = Variable(m.sample_n(batch_size * 28 * 28).view(batch_size, 1, 28, 28).cuda())
+        noise = Variable(torch.cuda.FloatTensor(batch_size, 1, 29, 29).normal_())
         # D Forward + Backward + Optimize
         optimizer_d.zero_grad()
         outputs_d = _d(images)
 
-        # Create fake labels
-        fake_labels = np.zeros(batch_size) + 10
-        fake_labels_d = Variable(torch.from_numpy(fake_labels).long().cuda())
-        
-        # Generate fake images and classify it
-        noise = Variable(m.sample_n(batch_size * 29 * 29).view(batch_size, 1, 29, 29).cuda())
-        fake_images = _g(labels_g.float(), noise)
-        fake_outputs = _d(fake_images)
-        
-        real_loss = criterion_d(outputs_d, labels)
-        fake_loss = criterion_d(fake_outputs, fake_labels_d)
+        if epoch < 3 or epoch % 4 == 0:
+            # Create fake labels
+            fake_labels = np.zeros(batch_size) + 10
+            fake_labels_d = Variable(torch.from_numpy(fake_labels).long().cuda())
+            
+            # Generate fake images and classify it
+            fake_images = _g(labels_g.float(), noise)
+            fake_outputs = _d(fake_images)
+            
+            real_loss = criterion_d(outputs_d, labels)
+            fake_loss = criterion_d(fake_outputs, fake_labels_d)
 
-        loss_d = real_loss + fake_loss
-        #loss_d = real_loss
-        loss_d.backward()
-        optimizer_d.step()
+            loss_d = real_loss + fake_loss
+            #loss_d = real_loss
+            loss_d.backward()
+            optimizer_d.step()
 
 
         # G Forward + Backward + Optimize
