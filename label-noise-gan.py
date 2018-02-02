@@ -136,7 +136,8 @@ class G(nn.Module):
         #noise = self.noise_autoencoder(noise)
         #print(noise.size(), out.size())
         #out = (out + noise) / 2
-        out = torch.max(out, noise)
+        #out = torch.max(out, noise)
+        out = torch.min(out, noise)        
         #out = out * noise
         #out = out + noise
         #out = self.conv1(out)
@@ -186,7 +187,7 @@ for epoch in range(epochs):
         optimizer_d.zero_grad()
         outputs_d = _d(images)
 
-        if epoch < 3 or epoch % 4 == 0:
+        if epoch % 4 == 0:
             # Create fake labels
             fake_labels = np.zeros(batch_size) + 10
             fake_labels_d = Variable(torch.from_numpy(fake_labels).long().cuda())
