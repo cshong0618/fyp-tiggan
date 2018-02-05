@@ -5,3 +5,4 @@ model*
 sample*
 data
 .directory
+__pycache__

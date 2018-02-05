@@ -8,11 +8,12 @@ from torch.autograd import Variable
 import pathlib
 import os
 import sys 
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from helper import generate_images
+from helper import generate_images, generate_batch_images
 
 # Hyperparameters
 epochs = 100
@@ -125,8 +126,59 @@ class G(nn.Module):
             nn.LeakyReLU(),
             nn.ConvTranspose2d(16, 8, kernel_size=2, stride=2, padding=2),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(8, 1, kernel_size=1, stride=1, padding=1),
+            nn.ConvTranspose2d(8, 1, kernel_size=2, stride=1, padding=1),
             nn.Tanh()
+        )
+
+        self.transformer2 = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 8, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(8, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer3 = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 8, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(8, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer_out = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 8, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(8, 1, kernel_size=1, stride=1, padding=1),
+            nn.Sigmoid()
         )
 
     def forward(self, x, noise):
@@ -136,12 +188,15 @@ class G(nn.Module):
         #noise = self.noise_autoencoder(noise)
         #print(noise.size(), out.size())
         #out = (out + noise) / 2
-        #out = torch.max(out, noise)
-        out = torch.min(out, noise)        
+        out = torch.max(out, noise)
+        #out = torch.max(out.norm(), noise)
+        #out = torch.min(out, noise)        
         #out = out * noise
         #out = out + noise
         #out = self.conv1(out)
-        out = self.transformer(out)
+        out = self.transformer(out)    
+        out = self.transformer_out(out)
+        
         return out
 
 
@@ -187,7 +242,7 @@ for epoch in range(epochs):
         optimizer_d.zero_grad()
         outputs_d = _d(images)
 
-        if epoch % 4 == 0:
+        if epoch < 3 or epoch % 4 == 0:
             # Create fake labels
             fake_labels = np.zeros(batch_size) + 10
             fake_labels_d = Variable(torch.from_numpy(fake_labels).long().cuda())
@@ -269,7 +324,7 @@ labels = (np.arange(11) == labels[:,None]).astype(np.float)
 labels = torch.from_numpy(labels)
 labels = Variable(labels.cuda())
 
-noise = Variable(m.sample_n(10 * 29 * 29).view(10, 1, 29, 29).cuda())
+noise = Variable(torch.cuda.FloatTensor(10, 1, 29, 29).normal_())
 
 im_outputs = _g(labels.float(), noise)
 
@@ -283,6 +338,8 @@ for i, img in enumerate(im_outputs):
         a = img.data.cpu().numpy()
     plt.imshow(a, cmap='gray')
     plt.savefig(os.path.join(figure_path, "%d.png" % i))
+
+generate_batch_images(_g, m, 10, start=0, end=9, prefix="end_training", figure_path="%d" % (int(time.time())))
 
 # Save the trained model
 D_model_path = './model/d'
