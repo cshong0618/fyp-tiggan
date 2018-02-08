@@ -25,21 +25,21 @@ class D(nn.Module):
         self.output_size = output_size
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(self.input_channels, 16, kernel_size=5, padding=2),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
-            nn.MaxPool2d(2)
-        )
-
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(16, 32, kernel_size=5, padding=2),
+            nn.Conv2d(self.input_channels, 32, kernel_size=5, padding=2),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
 
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+
         self.fc_out = nn.Sequential(
-            nn.Linear(7 * 7 * 32, self.output_size)
+            nn.Linear(7 * 7 * 64, self.output_size)
         )
 
     def forward(self, x):
@@ -99,36 +99,36 @@ class G(nn.Module):
         )
 
         self.transformer_pre = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
-            nn.BatchNorm2d(16),
-            nn.LeakyReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=2),
+            nn.Conv2d(1, 32, kernel_size=2, stride=1, padding=2),
             nn.BatchNorm2d(32),
             nn.LeakyReLU(),
             nn.MaxPool2d(2),
-            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2),
+            nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(16, 8, kernel_size=2, stride=2, padding=2),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(8, 1, kernel_size=2, stride=1, padding=1),
+            nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=2, stride=1, padding=1),
             nn.Tanh()
         )
 
         self.transformer_pre_2 = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
-            nn.BatchNorm2d(16),
-            nn.LeakyReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=2),
+            nn.Conv2d(1, 32, kernel_size=2, stride=1, padding=2),
             nn.BatchNorm2d(32),
             nn.LeakyReLU(),
             nn.MaxPool2d(2),
-            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2),
+            nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(16, 8, kernel_size=2, stride=2, padding=2),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(8, 1, kernel_size=2, stride=1, padding=1),
+            nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=2, stride=1, padding=1),
             nn.Tanh()
         )
 
@@ -180,7 +180,7 @@ class G(nn.Module):
             nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2, padding=2),
             nn.LeakyReLU(),
             nn.ConvTranspose2d(16, 1, kernel_size=1, stride=1, padding=1),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
     def forward(self, x, noise):
@@ -233,13 +233,13 @@ if __name__ == "__main__":
     print("Building discriminative model", end="\r")
     _d = D(1, 11)
     _d.cuda()
-    sys.stdout.flush()
+    sys.stdout.write("\r100%\033[K\n")
     print("Discriminative model done.")
 
     print("Building generative model", end="\r")
     _g = G(11)
     _g.cuda()
-    sys.stdout.flush()
+    sys.stdout.write("\r100%\033[K\n")
     print("Generative model done")
 
     # Loss and Optimizer
