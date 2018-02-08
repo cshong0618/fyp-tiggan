@@ -11,16 +11,16 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-def generate_images(_g, m, prefix="", suffix="", noise=None, figure_path = 'sample'):
+def generate_images(_g, m, prefix="", suffix="", noise_type=None, figure_path = 'sample'):
     labels = Variable(torch.arange(0, 10).view(-1)).data.numpy()
     labels = (np.arange(11) == labels[:,None]).astype(np.float)
     labels = torch.from_numpy(labels)
     labels = Variable(labels.cuda())
 
-    if noise is None:
-        noise = Variable(torch.cuda.FloatTensor(10, 1, 29, 29).normal_())
+    if noise_type is None:
+        noise_type = Variable(torch.cuda.FloatTensor(10, 1, 29, 29).normal_())
 
-    im_outputs = _g(labels.float(), noise)
+    im_outputs = _g(labels.float(), noise_type)
 
     pathlib.Path(figure_path).mkdir(parents=True, exist_ok=True)
 
@@ -32,7 +32,7 @@ def generate_images(_g, m, prefix="", suffix="", noise=None, figure_path = 'samp
         plt.imshow(a, cmap='gray')
         plt.savefig(os.path.join(figure_path, "%s-%d-%s.png" % (prefix, i, suffix)))
 
-def generate_batch_images(_g, m, batch_size, start=0, end=9, prefix="", suffix="", figure_path="./samples", noise="normal"):
+def generate_batch_images(_g, m, batch_size, start=0, end=9, prefix="", suffix="", figure_path="./samples", noise_type="normal"):
     if start >= end:
         raise ArithmeticError("start is higher than end [%d > %d]" % (start, end))
     
@@ -44,19 +44,19 @@ def generate_batch_images(_g, m, batch_size, start=0, end=9, prefix="", suffix="
         label_one_hot = torch.from_numpy(label_one_hot)
         label_one_hot = Variable(label_one_hot.cuda())
 
-        if noise == "normal":
+        if noise_type == "normal":
             noise = Variable(torch.cuda.FloatTensor(batch_size, 1, 29, 29).normal_())
-        elif noise == "uniform":
+        elif noise_type == "uniform":
             noise = Variable(torch.cuda.FloatTensor(batch_size, 1, 29, 29).uniform_())
-        elif noise == "cauchy":
+        elif noise_type == "cauchy":
             noise = Variable(torch.cuda.FloatTensor(batch_size, 1, 29, 29).cauchy_())
-        elif noise == "log_normal":
+        elif noise_type == "log_normal":
             noise = Variable(torch.cuda.FloatTensor(batch_size, 1, 29, 29).log_normal_())
-        elif noise == "geometric":
+        elif noise_type == "geometric":
             noise = Variable(torch.cuda.FloatTensor(batch_size, 1, 29, 29).geometric_())
-        elif noise == "exponential":
+        elif noise_type == "exponential":
             noise = Variable(torch.cuda.FloatTensor(batch_size, 1, 29, 29).exponential_())
-        elif noise == "random":
+        elif noise_type == "random":
             noise = Variable(torch.cuda.FloatTensor(batch_size, 1, 29, 29).random_())
             
         im_outputs = _g(label_one_hot.float(), noise)
