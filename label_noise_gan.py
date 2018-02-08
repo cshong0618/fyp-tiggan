@@ -215,8 +215,8 @@ def soft_label(np, low=0.3, high=0.7):
 
 if __name__ == "__main__":
     # Parameters
-    model_file_name = "%d-model" % (int(time.time()))
     start_time = "%d" % (int(time.time()))
+    model_file_name = "%s-model" % (start_time)
 
     # Hyperparameters
     epochs = 100
