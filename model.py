@@ -3,72 +3,156 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torchvision
 
-class GenerativeModel(nn.Module):
-    def __init__(self, dimen_in, dimen_out):
-        super(GenerativeModel, self).__init__()
-        self.dimen_in = dimen_in
-        self.dimen_out = dimen_out
+class G_1(nn.Module):
+    def __init__(self, input_size=10, name="G_1"):
+        super(G_1, self).__init__()
 
-        self.conv1x16 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=16, kernel_size=2, stride=1, padding=0),
-            nn.LeakyReLU(),
-            nn.MaxPool2d(2)
+        self.input_size = input_size
+        self.model_name = name
+
+        self.fc_in = nn.Sequential(
+            nn.Linear(self.input_size, 16),
+            #nn.LeakyReLU(),
+            nn.Linear(16, 7 * 7)
         )
 
-        self.conv16x32 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=2, stride=1, padding=0),
+        self.encoder = nn.Sequential(
+            nn.ConvTranspose2d(1, 16, kernel_size=2, stride=2, padding=2),
             nn.LeakyReLU(),
-            nn.MaxPool2d(2)
+            nn.ConvTranspose2d(16, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=3, stride=2, padding=2),
+            nn.LeakyReLU()
         )
 
-        self.conv32x64 = nn.Sequential(
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=2, stride=1, padding=0),
+        self.encoder_2 = nn.Sequential(
+            nn.ConvTranspose2d(1, 16, kernel_size=2, stride=2, padding=2),
             nn.LeakyReLU(),
-            nn.MaxPool2d(2)
+            nn.ConvTranspose2d(16, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=3, stride=2, padding=2),
+            nn.LeakyReLU()
         )
 
-        self.conv64x64 = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=1, padding=0),
+        self.transformer_pre = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
             nn.LeakyReLU(),
-            nn.MaxPool2d(2)
-        )
-
-        self.conv64x32 = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=32, kernel_size=2, stride=1, padding=0),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(128),
             nn.LeakyReLU(),
-            nn.MaxPool2d(2)
-        )
-
-        self.conv32x16 = nn.Sequential(
-            nn.Conv2d(in_channels=32, out_channels=16, kernel_size=2, stride=1, padding=0),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(),
-            nn.MaxPool2d(2)
-        )
-
-        self.conv16x1 = nn.Sequential(
-            nn.Conv2d(in_channels=16, out_channels=1, kernel_size=2, stride=1, padding=0),
+            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=2, stride=1, padding=1),
             nn.Tanh()
         )
 
-    def forward(self, x):
-        x = self.conv1x16(x)        # (batch, in_x, in_y, in_z)
-        x = self.conv16x32(x)       # (batch, in_x / 2, in_y / 2, in_z)
-        x = self.conv32x64(x)
-        x = self.conv64x64(x)
-        x = self.conv64x64(x)        
-        x = self.conv64x32(x)
-        x = self.conv32x16(x)
-        x = self.conv16x1(x)
-        x = x.view(x.size(0), -1)
+        self.transformer_pre_2 = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer_pre_3 = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer_2 = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer_out = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=1, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+    def forward(self, x, noise):
+        out = self.fc_in(x)
+        out = out.view(out.size(0), 1, 7, 7)
+
+        # Conv through label and noise
+        out = self.encoder(out)
+        _noise = self.transformer_pre(noise)
+        _noise = self.transformer_pre_2(_noise)
+        _noise = self.transformer_pre_3(_noise)        
+
+        # Add noise to output 1
+        out = out + _noise
+        out = self.transformer(out)
+        out_2 = self.transformer_2(out)
+
+        # Add noise to output for the last time
+        merge_1 = out_2 + _noise
+        out = self.transformer_out(merge_1)
         
-        size = 1
-        for i, n in enumerate(x.size()):
-            if i > 0:
-                size *= n
-
-        x = nn.Linear(size, 10)
-        return x
-
-_g = GenerativeModel((64, 64, 3), (64, 64, 3))
-print(_g)
-
+        return out

@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from helper import generate_images, generate_batch_images
+import model
 
 
 # Discrimination model
@@ -213,6 +214,10 @@ def soft_label(np, low=0.3, high=0.7):
 
 
 if __name__ == "__main__":
+    # Parameters
+    model_file_name = "%d-model" % (int(time.time()))
+    start_time = "%d" % (int(time.time()))
+
     # Hyperparameters
     epochs = 100
     batch_size = 100
@@ -237,7 +242,8 @@ if __name__ == "__main__":
     print("Discriminative model done.")
 
     print("Building generative model", end="\r")
-    _g = G(11)
+    #_g = G(11)
+    _g = model.G_1(11)
     _g.cuda()
     sys.stdout.write("\r100%\033[K\n")
     print("Generative model done")
@@ -252,6 +258,11 @@ if __name__ == "__main__":
     m = torch.distributions.Normal(torch.Tensor([-1.0]), torch.Tensor([1.0]))
 
     soft_label = np.vectorize(soft_label)
+
+    # Logs
+    d_loss_log = []
+    g_loss_log = []
+    log_name = "%d-log" % (int(time.time()))
 
     # Train the model
     for epoch in range(epochs):
@@ -308,13 +319,28 @@ if __name__ == "__main__":
             loss_g.backward()
             optimizer_g.step()
 
+            d_loss_log.append(loss_d.data[0])
+            g_loss_log.append(loss_g.data[0])
+
             if (i + 1) % 100 == 0:
                 print("Epoch [%d/%d], Iter [%d/%d] D Loss:%.10f, G Loss: %.10f" % (epoch + 1, epochs,
                                                                 i + 1, len(train_dataset) // batch_size, loss_d.data[0], loss_g.data[0]))
+
+                
         print("Generating images: ", end="\r")
-        generate_images(_g, m, "epoch %d" % (epoch + 1))
+        generate_images(_g, m, "epoch %d" % (epoch + 1), figure_path=start_time+"-sample")
         sys.stdout.flush()
         print("Generated images for epoch %d" % (epoch + 1))
+
+        print("Writing logs", end="\r")
+        with open(log_name, mode='a') as log:
+            log_name.write("d," + d_loss_log)
+            log_name.write("g," + g_loss_log)
+            d_loss_log = []
+            g_loss_log = []
+        sys.stdout.flush()
+        print("Written logs for %d" % (epoch + 1))
+
 
                                                             
     # Test D
@@ -358,11 +384,11 @@ if __name__ == "__main__":
         plt.savefig(os.path.join(figure_path, "%d.png" % i))
 
     # Save the trained model
-    D_model_path = './model/d'
+    D_model_path = os.path.join(model_file_name, 'd')
     pathlib.Path(D_model_path).mkdir(parents=True, exist_ok=True)
     torch.save(_d.state_dict(), os.path.join(D_model_path, '_d.pkl'))
 
-    G_model_path = './model/g'
+    G_model_path = os.path.join(model_file_name, 'g')
     pathlib.Path(G_model_path).mkdir(parents=True, exist_ok=True)
     torch.save(_g.state_dict(), os.path.join(G_model_path, '_g.pkl'))
 

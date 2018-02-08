@@ -11,7 +11,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-def generate_images(_g, m, prefix="", suffix="", noise=None):
+def generate_images(_g, m, prefix="", suffix="", noise=None, figure_path = 'sample'):
     labels = Variable(torch.arange(0, 10).view(-1)).data.numpy()
     labels = (np.arange(11) == labels[:,None]).astype(np.float)
     labels = torch.from_numpy(labels)
@@ -22,7 +22,6 @@ def generate_images(_g, m, prefix="", suffix="", noise=None):
 
     im_outputs = _g(labels.float(), noise)
 
-    figure_path = './sample'
     pathlib.Path(figure_path).mkdir(parents=True, exist_ok=True)
 
     for i, img in enumerate(im_outputs):
