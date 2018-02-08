@@ -71,6 +71,15 @@ class G(nn.Module):
             nn.LeakyReLU()
         )
 
+        self.encoder_2 = nn.Sequential(
+            nn.ConvTranspose2d(1, 16, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 32, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=3, stride=2, padding=2),
+            nn.LeakyReLU()
+        )
+
         self.noise_autoencoder = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
             nn.BatchNorm2d(16),
@@ -89,7 +98,7 @@ class G(nn.Module):
             nn.ConvTranspose2d(1, 1, kernel_size=5, padding=1)
         )
 
-        self.transformer = nn.Sequential(
+        self.transformer_pre = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
             nn.BatchNorm2d(16),
             nn.LeakyReLU(),
@@ -106,7 +115,7 @@ class G(nn.Module):
             nn.Tanh()
         )
 
-        self.transformer_out = nn.Sequential(
+        self.transformer_pre_2 = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=2, stride=1, padding=2),
             nn.BatchNorm2d(16),
             nn.LeakyReLU(),
@@ -119,25 +128,78 @@ class G(nn.Module):
             nn.LeakyReLU(),
             nn.ConvTranspose2d(16, 8, kernel_size=2, stride=2, padding=2),
             nn.LeakyReLU(),
-            nn.ConvTranspose2d(8, 1, kernel_size=1, stride=1, padding=1),
+            nn.ConvTranspose2d(8, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer_2 = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.transformer_out = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=1, stride=1, padding=1),
             nn.Sigmoid()
         )
 
     def forward(self, x, noise):
         out = self.fc_in(x)
         out = out.view(out.size(0), 1, 7, 7)
+
+        # Conv through label and noise
         out = self.encoder(out)
-        #noise = self.noise_autoencoder(noise)
-        #print(noise.size(), out.size())
-        #out = (out + noise) / 2
-        out = torch.max(out, noise)
-        #out = torch.max(out.norm(), noise)
-        #out = torch.min(out, noise)        
-        #out = out * noise
-        #out = out + noise
-        #out = self.conv1(out)
-        out = self.transformer(out)    
-        out = self.transformer_out(out)
+        _noise = self.transformer_pre(noise)
+        _noise = self.transformer_pre_2(_noise)
+        
+        # Add noise to output 1
+        out = out + _noise
+        out = self.transformer(out)
+        out_2 = self.transformer_2(out)
+
+        # Add noise to output for the last time
+        merge_1 = out_2 + _noise
+        out = self.transformer_out(merge_1)
         
         return out
 
@@ -168,12 +230,17 @@ if __name__ == "__main__":
 
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
-
+    print("Building discriminative model", end="\r")
     _d = D(1, 11)
     _d.cuda()
+    sys.stdout.flush()
+    print("Discriminative model done.")
 
+    print("Building generative model", end="\r")
     _g = G(11)
     _g.cuda()
+    sys.stdout.flush()
+    print("Generative model done")
 
     # Loss and Optimizer
     criterion_d = nn.CrossEntropyLoss()
@@ -189,11 +256,14 @@ if __name__ == "__main__":
     # Train the model
     for epoch in range(epochs):
         for i, (images, labels) in enumerate(train_loader):
+            print("Training batch: %d" % (i), end="\r")
+            sys.stdout.flush()
+
             images = Variable(images.cuda())
             labels = Variable(labels.cuda())
             labels_onehot = labels.data.cpu().numpy()
             labels_onehot = (np.arange(11) == labels_onehot[:,None]).astype(np.float)
-            labels_onehot = soft_label(labels_onehot)
+            #labels_onehot = soft_label(labels_onehot, 0.1, 0.9)
             labels_onehot = torch.from_numpy(labels_onehot)
             labels_g = labels_onehot.cuda()
             labels_g = Variable(labels_g)
@@ -205,9 +275,8 @@ if __name__ == "__main__":
 
             # Create fake labels
             fake_labels = np.zeros(batch_size) + 10
-            #fake_labels = soft_label(fake_labels)
             fake_labels_d = Variable(torch.from_numpy(fake_labels).long().cuda())
-            
+
             # Generate fake images and classify it
             fake_images = _g(labels_g.float(), noise)
             fake_outputs = _d(fake_images)
@@ -218,12 +287,13 @@ if __name__ == "__main__":
             loss_d = real_loss + fake_loss
             #loss_d = real_loss
             
-            if epoch < 2 or epoch % 3 == 0:
-                loss_d.backward()
-                optimizer_d.step()
+            #if epoch < 2 or epoch % 3 == 0:
+            loss_d.backward()
+            optimizer_d.step()
 
             labels_fake = np.random.randint(0, 10, batch_size)
             labels_fake_onehot = (np.arange(11) == labels_fake[:,None]).astype(np.float)
+            #labels_fake_onehot = soft_label(labels_fake_onehot, 0.1, 0.9)
             labels_fake_onehot = torch.from_numpy(labels_fake_onehot).cuda()
             labels_fake_onehot = Variable(labels_fake_onehot)
 
@@ -287,13 +357,13 @@ if __name__ == "__main__":
         plt.imshow(a, cmap='gray')
         plt.savefig(os.path.join(figure_path, "%d.png" % i))
 
-# Save the trained model
-D_model_path = './model/d'
-pathlib.Path(D_model_path).mkdir(parents=True, exist_ok=True)
-torch.save(_d.state_dict(), os.path.join(D_model_path, '_d.pkl'))
+    # Save the trained model
+    D_model_path = './model/d'
+    pathlib.Path(D_model_path).mkdir(parents=True, exist_ok=True)
+    torch.save(_d.state_dict(), os.path.join(D_model_path, '_d.pkl'))
 
-G_model_path = './model/g'
-pathlib.Path(G_model_path).mkdir(parents=True, exist_ok=True)
-torch.save(_d.state_dict(), os.path.join(G_model_path, '_g.pkl'))
+    G_model_path = './model/g'
+    pathlib.Path(G_model_path).mkdir(parents=True, exist_ok=True)
+    torch.save(_g.state_dict(), os.path.join(G_model_path, '_g.pkl'))
 
-generate_batch_images(_g, m, 10, start=0, end=9, prefix="end_training", figure_path="%d" % (int(time.time())))
+    generate_batch_images(_g, m, 10, start=0, end=9, prefix="end_training", figure_path="%d" % (int(time.time())))
