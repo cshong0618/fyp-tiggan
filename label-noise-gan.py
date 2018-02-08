@@ -15,8 +15,8 @@ import numpy as np
 from helper import generate_images
 
 # Hyperparameters
-epochs = 25
-batch_size = 100
+epochs = 50
+batch_size = 200
 learning_rate_d = 1e-3
 learning_rate_g = 1e-3
 
@@ -88,9 +88,9 @@ class G(nn.Module):
         )
 
         self.conv1 = nn.Sequential(
-            nn.ConvTranspose2d(1, 2, kernel_size=5, stride=2, padding=2),
+            nn.ConvTranspose2d(1, 16, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(),
-            nn.Conv2d(2, 1, kernel_size=5, stride=2, padding=1),
+            nn.Conv2d(16, 1, kernel_size=5, stride=2, padding=1),
             nn.Tanh()
         )
 
@@ -99,9 +99,9 @@ class G(nn.Module):
         out = out.view(out.size(0), 1, 7, 7)
         out = self.encoder(out)
         #out = (out + noise) / 2
-        #out = torch.max(out, noise)
+        out = torch.max(out, noise)
         #out = out * noise
-        out = out + noise
+        #out = out + noise
         out = self.conv1(out)
         return out
 
@@ -144,25 +144,26 @@ for epoch in range(epochs):
         labels_g = Variable(labels_g)
 
         # D Forward + Backward + Optimize
-        optimizer_d.zero_grad()
-        outputs_d = _d(images)
+        if epoch < 3 or epoch % 3 == 1:
+            optimizer_d.zero_grad()
+            outputs_d = _d(images)
 
-        # Create fake labels
-        fake_labels = np.zeros(batch_size) + 10
-        fake_labels_d = Variable(torch.from_numpy(fake_labels).long().cuda())
+            # Create fake labels
+            fake_labels = np.zeros(batch_size) + 10
+            fake_labels_d = Variable(torch.from_numpy(fake_labels).long().cuda())
         
-        # Generate fake images and classify it
-        noise = Variable(m.sample_n(batch_size * 29 * 29).view(batch_size, 1, 29, 29).cuda())
-        fake_images = _g(labels_g.float(), noise)
-        fake_outputs = _d(fake_images)
-        
-        real_loss = criterion_d(outputs_d, labels)
-        fake_loss = criterion_d(fake_outputs, fake_labels_d)
-
-        loss_d = real_loss + fake_loss
-        #loss_d = real_loss
-        loss_d.backward()
-        optimizer_d.step()
+            # Generate fake images and classify it
+            noise = Variable(m.sample_n(batch_size * 29 * 29).view(batch_size, 1, 29, 29).cuda())
+            fake_images = _g(labels_g.float(), noise)
+            fake_outputs = _d(fake_images)
+            
+            real_loss = criterion_d(outputs_d, labels)
+            fake_loss = criterion_d(fake_outputs, fake_labels_d)
+    
+            loss_d = real_loss + fake_loss
+            #loss_d = real_loss
+            loss_d.backward()
+            optimizer_d.step()
 
 
         # G Forward + Backward + Optimize
