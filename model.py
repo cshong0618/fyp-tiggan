@@ -313,7 +313,7 @@ class G_2(nn.Module):
 
 class G_3(nn.Module):
     def __init__(self, input_size=10, name="G_3"):
-        super(G_2, self).__init__()
+        super(G_3, self).__init__()
 
         self.input_size = input_size
         self.model_name = name
