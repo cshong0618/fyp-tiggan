@@ -334,8 +334,8 @@ if __name__ == "__main__":
 
         print("Writing logs", end="\r")
         with open(log_name, mode='a') as log:
-            log.write("d," + d_loss_log)
-            log.write("g," + g_loss_log)    
+            log.write("d," + str(d_loss_log))
+            log.write("g," + str(g_loss_log))
             log.close()
             d_loss_log = []
             g_loss_log = []
