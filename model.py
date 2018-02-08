@@ -311,8 +311,8 @@ class G_2(nn.Module):
         
         return out
 
-class G_2(nn.Module):
-    def __init__(self, input_size=10, name="G_2"):
+class G_3(nn.Module):
+    def __init__(self, input_size=10, name="G_3"):
         super(G_2, self).__init__()
 
         self.input_size = input_size
