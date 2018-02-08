@@ -243,7 +243,7 @@ if __name__ == "__main__":
 
     print("Building generative model", end="\r")
     #_g = G(11)
-    _g = model.G_1(11)
+    _g = model.G_2(11)
     _g.cuda()
     sys.stdout.write("\r100%\033[K\n")
     print("Generative model done")
@@ -334,8 +334,9 @@ if __name__ == "__main__":
 
         print("Writing logs", end="\r")
         with open(log_name, mode='a') as log:
-            log_name.write("d," + d_loss_log)
-            log_name.write("g," + g_loss_log)
+            log.write("d," + d_loss_log)
+            log.write("g," + g_loss_log)    
+            log.close()
             d_loss_log = []
             g_loss_log = []
         sys.stdout.flush()
