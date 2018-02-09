@@ -847,3 +847,120 @@ class G_label_no_conv_2(nn.Module):
         out = self.transformer_out(out)
         
         return out
+
+class G_label_no_conv_3(nn.Module):
+    def __init__(self, input_size=10, name="G_label_no_conv_3"):
+        super(G_label_no_conv_3, self).__init__()
+
+        self.input_size = input_size
+
+        self.fc_in = nn.Sequential(
+            nn.Linear(self.input_size, 29 * 29)
+        )
+
+        self.transformer_pre = nn.Sequential(
+            nn.Conv2d(1, 256, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(256, 512, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(512, 256, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(128, 1, kernel_size=2, stride=1, padding=1),
+            nn.LeakyReLU()
+        )
+
+        self.transformer_pre_2 = nn.Sequential(
+            nn.Conv2d(1, 256, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(256, 512, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(512, 256, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(128, 1, kernel_size=2, stride=1, padding=1),
+            nn.LeakyReLU()
+        )
+
+        self.transformer = nn.Sequential(
+            nn.Conv2d(1, 256, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(256, 512, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(512, 256, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(128, 1, kernel_size=2, stride=1, padding=1),
+            nn.LeakyReLU()
+        )
+
+        self.transformer_2 = nn.Sequential(
+            nn.Conv2d(1, 256, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(256, 512, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(512, 256, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(128, 1, kernel_size=2, stride=1, padding=1),
+            nn.LeakyReLU()
+        )
+
+        self.transformer_out = nn.Sequential(
+            nn.Conv2d(1, 8, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(8),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(8, 16, kernel_size=2, stride=1, padding=2),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            nn.ConvTranspose2d(16, 8, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(8, 4, kernel_size=2, stride=2, padding=2),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(4, 1, kernel_size=1, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+    """
+    Noise: [transformer_pre]->[transformer_pre_2]->add(noise)->[transformer]->add(noise)->[transformer_2]-
+                                                                                                          |--> add ->[transformer_out]
+    x    : [fc_in]->reshape-------------------------------------------------------------------------------
+    """
+    def forward(self, x, noise):
+        out = self.fc_in(x)
+        out = out.view(out.size(0), 1, 29, 29)
+
+        # Conv through label and noise
+        _noise = self.transformer_pre(noise)
+        _noise = self.transformer_pre_2(_noise)
+        _noise = _noise + noise
+        _noise = self.transformer(_noise)
+        _noise = _noise + noise
+        _noise = self.transformer_2(_noise)
+        out = out + _noise
+
+        out = self.transformer_out(out)
+        
+        return out
