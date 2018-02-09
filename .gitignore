@@ -6,3 +6,4 @@ sample*
 data
 .directory
 __pycache__
+[0-9]*
