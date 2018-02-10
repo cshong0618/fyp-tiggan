@@ -238,21 +238,23 @@ if __name__ == "__main__":
     print("Building discriminative model", end="\r")
     _d = D(1, 11)
     _d.cuda()
-    sys.stdout.write("\r100%\033[K\n")
-    print("Discriminative model done.")
+    sys.stdout.write("\r\033[K\n")
+    print("Discriminative model done")
 
     print("Building generative model", end="\r")
     #_g = G(11)
-    _g = model.G_label_no_conv_4(11)
+    #_g = model.G_label_no_conv(11)
+    _g = model.G_rnn(11)
+    print(_g.parameters)
     _g.cuda()
-    sys.stdout.write("\r100%\033[K\n")
+    sys.stdout.write("\r\033[K\n")
     print("Generative model done")
 
     # Loss and Optimizer
-    criterion_d = nn.CrossEntropyLoss()
+    criterion_d = nn.CrossEntropyLoss().cuda()
     optimizer_d = torch.optim.Adam(_d.parameters(), lr=learning_rate_d)
 
-    criterion_g = nn.CrossEntropyLoss()
+    criterion_g = nn.CrossEntropyLoss().cuda()
     optimizer_g = torch.optim.Adam(_g.parameters(), lr=learning_rate_g)
 
     m = torch.distributions.Normal(torch.Tensor([-1.0]), torch.Tensor([1.0]))
@@ -262,7 +264,12 @@ if __name__ == "__main__":
     # Logs
     d_loss_log = []
     g_loss_log = []
-    log_name = "%d-log" % (int(time.time()))
+    log_name = "%s-log" % (start_time)
+
+    with open(log_name, mode='a') as log:
+        log.write("Model name: " + _g.__class__.__name__ + "\n")
+        log.write("Start time: " + start_time + "\n")
+        log.close()
 
     # Train the model
     for epoch in range(epochs):
@@ -325,24 +332,18 @@ if __name__ == "__main__":
             if (i + 1) % 100 == 0:
                 print("Epoch [%d/%d], Iter [%d/%d] D Loss:%.10f, G Loss: %.10f" % (epoch + 1, epochs,
                                                                 i + 1, len(train_dataset) // batch_size, loss_d.data[0], loss_g.data[0]))
+                with open(log_name, mode='a') as log:
+                    log.write("d," + str(d_loss_log) + "\n")
+                    log.write("g," + str(g_loss_log) + "\n")
+                    log.close()
+                    d_loss_log = []
+                    g_loss_log = []
 
                 
         print("Generating images: ", end="\r")
-        generate_images(_g, m, "epoch %d" % (epoch + 1), figure_path=start_time+"-sample")
+        generate_batch_images(_g, m, 5, start=0, end=9, prefix="training-epoch-%d" % (epoch + 1), figure_path=start_time+"-sample")
         sys.stdout.flush()
         print("Generated images for epoch %d" % (epoch + 1))
-
-        print("Writing logs", end="\r")
-        with open(log_name, mode='a') as log:
-            log.write("d," + str(d_loss_log) + "\n")
-            log.write("g," + str(g_loss_log) + "\n")
-            log.close()
-            d_loss_log = []
-            g_loss_log = []
-        sys.stdout.flush()
-        print("Written logs for %d" % (epoch + 1))
-
-
                                                             
     # Test D
     _d.eval()
@@ -393,4 +394,4 @@ if __name__ == "__main__":
     pathlib.Path(G_model_path).mkdir(parents=True, exist_ok=True)
     torch.save(_g.state_dict(), os.path.join(G_model_path, '_g.pkl'))
 
-    generate_batch_images(_g, m, 10, start=0, end=9, prefix="end_training", figure_path="%d" % (int(time.time())))
+    generate_batch_images(_g, m, 10, start=0, end=9, prefix="end_training", figure_path=start_time+"sample")

@@ -11,6 +11,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+import PIL
+
 def generate_images(_g, m, prefix="", suffix="", noise_type=None, figure_path = 'sample'):
     labels = Variable(torch.arange(0, 10).view(-1)).data.numpy()
     labels = (np.arange(11) == labels[:,None]).astype(np.float)
@@ -65,6 +67,10 @@ def generate_batch_images(_g, m, batch_size, start=0, end=9, prefix="", suffix="
                 a = img[0].data.cpu().numpy()
             else:
                 a = img.data.cpu().numpy()
+
+            #img = PIL.Image.fromarray(a)
+            #img = img.convert('RGB')
+            #img.save(os.path.join(figure_path, "%s-%d-%d-%s.png" % (prefix, n, i, suffix)))
 
             plt.imshow(a, cmap='gray')
             plt.savefig(os.path.join(figure_path, "%s-%d-%d-%s.png" % (prefix, n, i, suffix)))
