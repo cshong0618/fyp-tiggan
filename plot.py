@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import argparse
 
 def plot_from_log(log_file):
     d_loss = []
@@ -31,4 +32,11 @@ def plot_from_log(log_file):
     plt.show()
 
 if __name__ == "__main__":
-    plot_from_log("1518261086-log")
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-L', '--log', default='', help="Log file name", required=True)
+    args = parser.parse_args()
+
+    log_file = args.log
+
+    plot_from_log(log_file)
