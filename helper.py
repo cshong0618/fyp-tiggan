@@ -37,7 +37,7 @@ def generate_images(_g, m, prefix="", suffix="", noise_type=None, figure_path = 
 def generate_batch_images(_g, m, batch_size, start=0, end=9, prefix="", suffix="", figure_path="./samples", noise_type="normal"):
     if start >= end:
         raise ArithmeticError("start is higher than end [%d > %d]" % (start, end))
-    
+    _g.cuda()
     pathlib.Path(figure_path).mkdir(parents=True, exist_ok=True)    
 
     for n in range(start, end + 1):

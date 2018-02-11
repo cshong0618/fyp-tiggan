@@ -223,6 +223,8 @@ if __name__ == "__main__":
     batch_size = 100
     learning_rate_d = 1e-3
     learning_rate_g = 1e-3
+    samples = 5
+    sample_interval = epochs // samples
 
     # MNIST dataset
     train_dataset = datasets.MNIST(root="./data", train=True, transform=transforms.ToTensor(),
@@ -244,7 +246,7 @@ if __name__ == "__main__":
     print("Building generative model", end="\r")
     #_g = G(11)
     #_g = model.G_label_no_conv(11)
-    _g = model.G_rnn(11)
+    _g = model.G_cgan(11)
     print(_g.parameters)
     _g.cuda()
     sys.stdout.write("\r\033[K\n")
@@ -272,6 +274,7 @@ if __name__ == "__main__":
         log.close()
 
     # Train the model
+    i = 0
     for epoch in range(epochs):
         for i, (images, labels) in enumerate(train_loader):
             print("Training batch: %d" % (i), end="\r")
@@ -333,17 +336,20 @@ if __name__ == "__main__":
                 print("Epoch [%d/%d], Iter [%d/%d] D Loss:%.10f, G Loss: %.10f" % (epoch + 1, epochs,
                                                                 i + 1, len(train_dataset) // batch_size, loss_d.data[0], loss_g.data[0]))
                 with open(log_name, mode='a') as log:
-                    log.write("d," + str(d_loss_log) + "\n")
-                    log.write("g," + str(g_loss_log) + "\n")
+                    log.write("d=" + str(d_loss_log) + "\n")
+                    log.write("g=" + str(g_loss_log) + "\n")
                     log.close()
                     d_loss_log = []
                     g_loss_log = []
 
-                
-        print("Generating images: ", end="\r")
-        generate_batch_images(_g, m, 5, start=0, end=9, prefix="training-epoch-%d" % (epoch + 1), figure_path=start_time+"-sample")
-        sys.stdout.flush()
-        print("Generated images for epoch %d" % (epoch + 1))
+        if i == sample_interval:
+            print("Generating images: ", end="\r")
+            generate_batch_images(_g, m, 5, start=0, end=9, prefix="training-epoch-%d" % (epoch + 1), figure_path=start_time+"-sample")
+            sys.stdout.flush()
+            print("Generated images for epoch %d" % (epoch + 1))
+            i = 0
+        else:
+            i += 1
                                                             
     # Test D
     _d.eval()

@@ -7,3 +7,4 @@ data
 .directory
 __pycache__
 [0-9]*
+batch_generate*

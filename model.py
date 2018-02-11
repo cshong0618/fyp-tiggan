@@ -1123,3 +1123,45 @@ class G_rnn(nn.Module):
         noise = fc_out + noise
         conv_out = self.conv1(noise)
         return conv_out
+
+class G_cgan(nn.Module):
+    def __init__(self, input_size=10, img_size=29):
+        super(G_cgan, self).__init__()
+        self.input_size = input_size
+        self.img_size = img_size
+
+        self.label_input = nn.Sequential(
+            nn.Linear(self.input_size, self.img_size * self.img_size)
+        )
+
+        self.conv1 = nn.Sequential(
+            nn.ZeroPad2d(2),
+            nn.Conv2d(in_channels=1, out_channels=32, kernel_size=2, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(),
+            nn.AvgPool2d(2),
+            nn.Dropout2d(0.5),
+            nn.ZeroPad2d(2),
+            nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(),
+            nn.AvgPool2d(2),
+            nn.Dropout2d(0.5),
+            nn.ConvTranspose2d(64, 128, kernel_size=5, stride=2, padding=1),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=1, padding=1),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=5, stride=1, padding=1),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=1, padding=1),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=2, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+    def forward(self, x, noise):
+        fc_out = self.label_input(x)
+        fc_out = fc_out.view(fc_out.size(0), 1, self.img_size, self.img_size)
+        noise = fc_out + noise
+        conv_out = self.conv1(noise)
+        return conv_out
