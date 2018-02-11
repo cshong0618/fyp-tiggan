@@ -274,7 +274,7 @@ if __name__ == "__main__":
         log.close()
 
     # Train the model
-    i = 0
+    _i = 0
     for epoch in range(epochs):
         for i, (images, labels) in enumerate(train_loader):
             print("Training batch: %d" % (i), end="\r")
@@ -342,14 +342,14 @@ if __name__ == "__main__":
                     d_loss_log = []
                     g_loss_log = []
 
-        if i == sample_interval:
+        if _i == sample_interval:
             print("Generating images: ", end="\r")
             generate_batch_images(_g, m, 5, start=0, end=9, prefix="training-epoch-%d" % (epoch + 1), figure_path=start_time+"-sample")
             sys.stdout.flush()
             print("Generated images for epoch %d" % (epoch + 1))
-            i = 0
+            _i = 0
         else:
-            i += 1
+            _i += 1
                                                             
     # Test D
     _d.eval()
