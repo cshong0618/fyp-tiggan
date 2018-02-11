@@ -246,7 +246,7 @@ if __name__ == "__main__":
     print("Building generative model", end="\r")
     #_g = G(11)
     #_g = model.G_label_no_conv(11)
-    _g = model.G_cgan(11)
+    _g = model.G_rnn(11)
     print(_g.parameters)
     _g.cuda()
     sys.stdout.write("\r\033[K\n")
