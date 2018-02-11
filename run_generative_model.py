@@ -1,10 +1,22 @@
 import torch
 import time
+import argparse
+import sys
 
 from helper import generate_batch_images
 import model
 
-path = "./1518261086-model/g/_g.pkl"
+parser = argparse.ArgumentParser()
+
+parser.add_argument("-M", "--model_path", help='Model path', default='')
+
+args = parser.parse_args(sys.argv[1:])
+
+if args.model_path != "":
+    path = args.model_path
+else:
+    path = "./1518261086-model/g/_g.pkl"
+
 
 g = model.G_rnn(11)
 
